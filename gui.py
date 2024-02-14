@@ -1,40 +1,25 @@
 # source ./venv/Scripts/activate
 import tkinter as tk
-from tkinter import simpledialog
 
 from customtkinter import CTk as ctk
 from customtkinter import CTkButton as ctk_button
-from customtkinter import CTkCheckBox as ctk_checkbox
 from customtkinter import CTkEntry as ctk_entry
 from customtkinter import CTkFont as ctk_font
 from customtkinter import CTkFrame as ctk_frame
 from customtkinter import CTkLabel as ctk_label
 from customtkinter import CTkOptionMenu as ctk_optionmenu
+from customtkinter import CTkTextbox as ctk_textbox
 from customtkinter import set_appearance_mode as ctk_set_theme
 from customtkinter import set_default_color_theme as ctk_set_color_theme
 from customtkinter import set_widget_scaling as ctk_set_widget_scale
 
+from sophos_login import SophosLogin
 from utils import load_credentials, save_credentials_file
 
 # Themes: "System" (standard), "Dark", "Light"
 ctk_set_theme("System")
 # Color themes: "blue" (standard), "green", "dark-blue"
 ctk_set_color_theme("blue")
-from customtkinter import ThemeManager
-
-
-class CustomDialog(simpledialog.Dialog):
-    def body(self, master):
-        self.label = ctk_label(
-            master,
-            text="This is a custom dialog box",
-            foreground="#ffffff",  # Use 'foreground' instead of 'fg'
-            background="#2b2b2b",  # Use 'background' instead of 'bg'
-            font=("Arial", 12),
-        )
-
-    def apply(self):
-        print("You clicked OK")
 
 
 class Frame(ctk_frame):
@@ -73,25 +58,37 @@ class App(ctk):
         self.title("Impartus Downloader")
         self.geometry("1100x580")
 
-        # give a tuple of row/column indices that will have the same weight
-        # or give just a single index and specify its weight
-        # weight: how much space will be allocated to the row or column when the window is resized
-        # configure the grid for the main parent window frame
         self.grid_columnconfigure(1, weight=3, uniform="main_col_group")
         self.grid_rowconfigure((0, 1, 2, 3), weight=1, uniform="main_row_group")
 
-        # sticky: "nsew" (north, south, east, west), if cell is larger, then on which sides will this widget stick to the cell boundary?
+        self.sidebar_ui()
 
-        # padx, pady: padding on x and y axis of the widget/element from the boundary of the cell, cell being its position in the grid
-        # ipadx, ipady: internal padding on x and y axis of the widget from its own boundary
-        # if you provide padding as a single number it will be applied to both sides, so better to provide as a tuple always
-        # padx=(20, 0) means 20 padding on left and 0 padding on right, pady=(20, 0) means 20 padding on top and 0 padding on bottom
+        self.main_frame = Frame(master=self, grid=(0, 1), span=(4, 3))
+        self.main_frame.grid_columnconfigure(
+            (0, 1, 2), weight=1, uniform="main_frame_col_group"
+        )
 
-        # columnspan: how many columns will this widget span
-        # rowspan: how many rows will this widget span
-        # by default columnspan and rowspan are 1
+        self.login_form_ui()
 
-        # LEFT SIDEBAR FRAME
+        self.main_frame.grid_rowconfigure(3, weight=1)
+        self.log_box = ctk_textbox(
+            master=self.main_frame, activate_scrollbars=True, state="disabled"
+        )
+        self.log_box.grid(
+            row=3,
+            column=0,
+            padx=(20, 20),
+            pady=(20, 20),
+            sticky="nsew",
+            columnspan=3,
+            ipadx=10,
+            ipady=10,
+        )
+
+    def sidebar_ui(self) -> None:
+        """
+        Left sidebar frame UI configuration
+        """
         self.sidebar_frame = Frame(
             master=self,
             grid=(0, 0),
@@ -108,7 +105,7 @@ class App(ctk):
         # logo label on top left
         self.logo_label = ctk_label(
             master=self.sidebar_frame,
-            text="Impartus Downloader",
+            text="Sophos Auto Login",
             font=ctk_font(size=20, weight="bold"),
         )
         self.logo_label.grid(row=0, column=0, padx=(30, 10), pady=(25, 10), sticky="n")
@@ -155,21 +152,26 @@ class App(ctk):
         )
         self.scaling_optionemenu.grid(row=4, column=0, padx=20, pady=(0, 20))
 
-        # MAIN FRAME
-        self.main_frame = Frame(master=self, grid=(0, 1), span=(4, 3))
-        # configure the main frame's grid
-        self.main_frame.grid_columnconfigure(
-            (0, 1, 2), weight=1, uniform="main_frame_col_group"
-        )
+    def log_text(self, text_str: str) -> None:
+        """
+        Log text in the read-only textbox
+        """
+        self.log_box.configure(state="normal")
+        self.log_box.insert(index="end", text=f"{text_str}\n")
+        self.log_box.configure(state="disabled")
 
-        self.login_form()
+    def login_form_ui(self) -> None:
+        """
+        Main frame UI configuration
+        """
 
-    def login_form(self) -> None:
         username: str = ""
         password: str = ""
+
         initial_credentials = load_credentials()
+
         if type(initial_credentials) == str:
-            pass
+            pass  # error msg
         elif type(initial_credentials) == dict:
             username = initial_credentials["username"]
             password = initial_credentials["password"]
@@ -263,9 +265,24 @@ class App(ctk):
     def submit_credentials(self):
         username = self.username_input.get()
         password = self.password_input.get()
+
         if not (username and password):
             return
-        save_credentials_file({"username": username, "password": password})
+
+        old_credentials = load_credentials()
+        if not (
+            username == old_credentials["username"]
+            and password == old_credentials["password"]
+        ):
+            save_credentials_file({"username": username, "password": password})
+            self.log_text("New credentials saved successfully!")
+
+        sophos = SophosLogin(
+            browser_name="chrome",
+            binary_location="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        )
+        output = sophos.login(username, password)
+        self.log_text(output)
 
     def change_appearance_mode_event(self, new_appearance_mode: str):
         ctk_set_theme(new_appearance_mode)
@@ -273,19 +290,6 @@ class App(ctk):
     def change_scaling_event(self, new_scaling: str):
         new_scaling_float = int(new_scaling.replace("%", "")) / 100
         ctk_set_widget_scale(new_scaling_float)
-
-    def button_callback(self) -> None:
-        # dialog = CustomDialog(self)
-        print("Button clicked")
-        # tkinter.messagebox.showinfo(
-        #     title="Button",
-        #     message="You clicked the button!",
-        #     parent=self,
-        #     icon="info",
-        #     type="ok",
-        #     detail="This is a detailed message",
-        #     default="ok",
-        # )
 
 
 if __name__ == "__main__":
