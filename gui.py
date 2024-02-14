@@ -77,7 +77,6 @@ class App(ctk):
         # or give just a single index and specify its weight
         # weight: how much space will be allocated to the row or column when the window is resized
         # configure the grid for the main parent window frame
-        self.grid_columnconfigure(1, weight=1, uniform="main_col_group")
         self.grid_columnconfigure(1, weight=3, uniform="main_col_group")
         self.grid_rowconfigure((0, 1, 2, 3), weight=1, uniform="main_row_group")
 
@@ -102,9 +101,6 @@ class App(ctk):
             bg_color=("#dadae8", "#89898f"),
         )
         # configure the left sidebar frame's grid
-        self.sidebar_frame.grid_rowconfigure(
-            (1, 2, 3, 4), weight=1, uniform="sidebar_row_group", pad=0
-        )
         self.sidebar_frame.grid_rowconfigure(
             0, weight=8, uniform="sidebar_row_group", pad=0
         )
@@ -160,11 +156,11 @@ class App(ctk):
         self.scaling_optionemenu.grid(row=4, column=0, padx=20, pady=(0, 20))
 
         # MAIN FRAME
-        self.main_frame = Frame(master=self, grid=(0, 1), span=(4, 2))
+        self.main_frame = Frame(master=self, grid=(0, 1), span=(4, 3))
         # configure the main frame's grid
-        self.main_frame.grid_columnconfigure((0, 1), weight=3)
-        self.main_frame.grid_columnconfigure(2, weight=1)
-        self.main_frame.grid_rowconfigure((0, 1, 2), weight=0)
+        self.main_frame.grid_columnconfigure(
+            (0, 1, 2), weight=1, uniform="main_frame_col_group"
+        )
 
         self.login_form()
 
@@ -189,7 +185,7 @@ class App(ctk):
             font=ctk_font(size=14),
         )
         self.username_label.grid(
-            row=0, column=0, padx=(20, 20), pady=(20, 20), sticky="w"
+            row=0, column=0, padx=(40, 20), pady=(20, 20), sticky="w"
         )
 
         self.username_input = ctk_entry(
@@ -208,46 +204,67 @@ class App(ctk):
             text="Password",
             font=ctk_font(size=14),
         )
-        self.password_label.grid(row=0, column=1, padx=(20, 20), pady=(20, 20))
+        self.password_label.grid(row=0, column=2, padx=(20, 20), pady=(20, 20))
 
+        self.password_input_frame = Frame(
+            master=self.main_frame,
+            grid=(1, 2),
+            span=(1, 1),
+            fg_color=self.main_frame.cget("fg_color"),
+        )
+        self.password_input_frame.grid_columnconfigure(
+            0, weight=3, uniform="password_input"
+        )
+        self.password_input_frame.grid_columnconfigure(
+            1, weight=1, uniform="password_input"
+        )
+        self.password_input_frame.grid_rowconfigure(
+            0, weight=1, uniform="password_input"
+        )
         self.password_input = ctk_entry(
             width=250,
-            master=self.main_frame,
+            master=self.password_input_frame,
             placeholder_text="Password",
             font=ctk_font(size=14),
             show="*",
             textvariable=initial_password_state,
         )
-        self.password_input.grid(row=1, column=1, padx=(0, 0), pady=(0, 20), sticky="e")
+        self.password_input.grid(row=0, column=0, padx=(0, 1), pady=(0, 20), sticky="e")
 
         self.show_password_button = ctk_button(
-            master=self,
-            text="Show Password",
+            master=self.password_input_frame,
+            text="Show",
             command=self.toggle_password,
         )
         self.show_password_button.grid(
-            row=1, column=2, padx=(0, 0), pady=(0, 20), sticky="e"
+            row=0, column=1, padx=(0, 0), pady=(0, 20), sticky="e"
         )
 
         self.submit_credentials_button = ctk_button(
             master=self.main_frame,
             text="Submit",
             command=self.submit_credentials,
-            font=ctk_font(size=14, family="Roboto"),
+            font=ctk_font(size=14, family="Roboto", weight="bold"),
+            border_width=2,
+            corner_radius=20,
         )
         self.submit_credentials_button.grid(
-            row=2, column=0, padx=(20, 20), pady=(0, 20)
+            row=2, column=1, padx=(20, 20), pady=(0, 20), ipadx=20, ipady=10
         )
 
     def toggle_password(self):
         if self.password_input.cget("show") == "":
             self.password_input.configure(show="*")
+            self.show_password_button.configure(text="Show")
         else:
             self.password_input.configure(show="")
+            self.show_password_button.configure(text="Hide")
 
     def submit_credentials(self):
         username = self.username_input.get()
         password = self.password_input.get()
+        if not (username and password):
+            return
         save_credentials_file({"username": username, "password": password})
 
     def change_appearance_mode_event(self, new_appearance_mode: str):
