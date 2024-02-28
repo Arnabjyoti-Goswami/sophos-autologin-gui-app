@@ -15,9 +15,6 @@ from selenium.webdriver.support.expected_conditions import (
     presence_of_element_located as element_present,
 )
 from selenium.webdriver.support.ui import WebDriverWait as wait
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.firefox import GeckoDriverManager
-from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
 from utils import click_element
 
@@ -57,24 +54,15 @@ class SophosLogin:
             if self.browser_name == "chrome":
                 chrome_options = ChromeOptions()
                 chrome_options = self._configure_options(chrome_options)
-                driver = ChromeDriver(
-                    service=ChromeService(ChromeDriverManager().install()),
-                    options=chrome_options,
-                )
+                driver = ChromeDriver(options=chrome_options)
             elif self.browser_name == "firefox":
                 firefox_options = FirefoxOptions()
                 firefox_options = self._configure_options(firefox_options)
-                driver = FirefoxDriver(
-                    service=FirefoxService(GeckoDriverManager().install()),
-                    options=firefox_options,
-                )
+                driver = FirefoxDriver(options=firefox_options)
             elif self.browser_name == "edge":
                 edge_options = EdgeOptions()
                 edge_options = self._configure_options(edge_options)
-                driver = EdgeDriver(
-                    service=EdgeService(EdgeChromiumDriverManager().install()),
-                    options=edge_options,
-                )
+                driver = EdgeDriver(options=edge_options)
             else:
                 raise ValueError("Invalid choice")
 
@@ -86,6 +74,10 @@ class SophosLogin:
     def login(self, username: str, password: str) -> str:
         try:
             driver = self.init_driver()
+
+            if isinstance(driver, str):
+                return driver
+
             driver.get(self.url)
             username_input_xpath = f"/html/body/font/font/font/font/div/div[1]/div[2]/div[1]/div[1]/input[1]"
             username_input = wait(driver, 10).until(
@@ -111,6 +103,6 @@ class SophosLogin:
 
             return "Login successful!"
         except TimeoutException as err:
-            print(f"An error occurred: The page took too long to load \n{err}")
+            return f"An error occurred: The page took too long to load \n{err}"
         except Exception as err:
             return f"An error occurred: {err}"
