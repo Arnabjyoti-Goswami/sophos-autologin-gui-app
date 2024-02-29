@@ -34,17 +34,15 @@ class SophosLogin:
         self,
         options: ChromeOptions | EdgeOptions | FirefoxOptions,
     ) -> ChromeOptions | EdgeOptions | FirefoxOptions:
-        if self.binary_location:
-            options.binary_location = self.binary_location
-        options.headless = False
-        # ignore INFO and WARNINGS, only display errors in the console:
-        options.add_argument("--log-level=3")
-        options.add_argument("--window-size=1200,800")
+        options.binary_location = self.binary_location
+        options.headless = True
+        options.add_argument(
+            "--log-level=3"
+        )  # ignore INFO and WARNINGS, only display errors in the console
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-extensions")
-        options.add_argument("--start-maximized")
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--disable-default-apps")
         return options

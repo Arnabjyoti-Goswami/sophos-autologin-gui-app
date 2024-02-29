@@ -70,12 +70,12 @@ class App(ctk):
 
         self.login_form_ui()
 
-        self.main_frame.grid_rowconfigure(3, weight=1)
+        self.main_frame.grid_rowconfigure(5, weight=1)
         self.log_box = ctk_textbox(
             master=self.main_frame, activate_scrollbars=True, state="disabled"
         )
         self.log_box.grid(
-            row=3,
+            row=5,
             column=0,
             padx=(20, 20),
             pady=(20, 20),
@@ -165,21 +165,29 @@ class App(ctk):
         Main frame UI configuration
         """
 
-        username: str = ""
-        password: str = ""
+        username = ""
+        password = ""
+        browser = "Chrome"
+        browser_binary_path = ""
 
         initial_credentials = load_credentials()
 
-        if type(initial_credentials) == str:
-            pass  # error msg
+        if isinstance(initial_credentials, str):
+            pass  # no credentials file saved, so upon using this app for the first time this error will be gone anyways
         elif type(initial_credentials) == dict:
             username = initial_credentials["username"]
             password = initial_credentials["password"]
+            browser = initial_credentials["browser"]
+            browser_binary_path = initial_credentials["browser_binary_path"]
 
         initial_username_state = tk.StringVar(self)
         initial_username_state.set(username)
         initial_password_state = tk.StringVar(self)
         initial_password_state.set(password)
+        initial_browser_state = tk.StringVar(self)
+        initial_browser_state.set(browser)
+        initial_browser_binary_path_state = tk.StringVar(self)
+        initial_browser_binary_path_state.set(browser_binary_path)
 
         self.username_label = ctk_label(
             master=self.main_frame,
@@ -189,7 +197,6 @@ class App(ctk):
         self.username_label.grid(
             row=0, column=0, padx=(40, 20), pady=(20, 20), sticky="w"
         )
-
         self.username_input = ctk_entry(
             width=250,
             master=self.main_frame,
@@ -242,6 +249,49 @@ class App(ctk):
             row=0, column=1, padx=(0, 0), pady=(0, 20), sticky="e"
         )
 
+        self.browser_label = ctk_label(
+            master=self.main_frame,
+            text="Browser",
+            font=ctk_font(size=14),
+        )
+        self.browser_label.grid(
+            row=2, column=0, padx=(40, 20), pady=(20, 20), sticky="w"
+        )
+        self.browser_option_menu = ctk_optionmenu(
+            master=self.main_frame,
+            values=["Chrome", "Firefox", "Edge"],
+            font=ctk_font(size=14),
+            width=200,
+            height=30,
+            variable=initial_browser_state,
+            anchor="center",
+        )
+        self.browser_option_menu.grid(
+            row=3,
+            column=0,
+            padx=(20, 20),
+            pady=(0, 20),
+            sticky="w",
+        )
+        self.browser_binary_path_label = ctk_label(
+            master=self.main_frame,
+            text="Path to executable of browser",
+            font=ctk_font(size=14),
+        )
+        self.browser_binary_path_label.grid(
+            row=2, column=2, padx=(20, 10), pady=(20, 20), sticky="w"
+        )
+        self.browser_binary_path_input = ctk_entry(
+            master=self.main_frame,
+            width=300,
+            placeholder_text="C:\Program Files\Google\Chrome\Application\chrome.exe",
+            font=ctk_font(size=14),
+            textvariable=initial_browser_binary_path_state,
+        )
+        self.browser_binary_path_input.grid(
+            row=3, column=2, padx=(5, 20), pady=(0, 20), sticky="ew"
+        )
+
         self.submit_credentials_button = ctk_button(
             master=self.main_frame,
             text="Submit",
@@ -251,7 +301,7 @@ class App(ctk):
             corner_radius=20,
         )
         self.submit_credentials_button.grid(
-            row=2, column=1, padx=(20, 20), pady=(0, 20), ipadx=20, ipady=10
+            row=4, column=1, padx=(20, 20), pady=(0, 20), ipadx=20, ipady=10
         )
 
     def toggle_password(self):
@@ -265,23 +315,33 @@ class App(ctk):
     def submit_credentials(self):
         username = self.username_input.get()
         password = self.password_input.get()
+        browser = self.browser_option_menu.get()
+        browser_binary_path = self.browser_binary_path_input.get()
 
-        if not (username and password):
+        current_credentials = {
+            "username": username,
+            "password": password,
+            "browser": browser,
+            "browser_binary_path": browser_binary_path,
+        }
+
+        if not (username and password and browser and browser_binary_path):
             return
 
         old_credentials = load_credentials()
-        if not (
-            username == old_credentials["username"]
-            and password == old_credentials["password"]
-        ):
-            save_credentials_file({"username": username, "password": password})
+
+        if (
+            (not isinstance(old_credentials, str))
+            and not (current_credentials == old_credentials)
+        ) or isinstance(old_credentials, str):
+            save_credentials_file(current_credentials)
             self.log_text("New credentials saved successfully!")
 
         sophos = SophosLogin(
-            browser_name="chrome",
-            binary_location="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            browser_name=browser.lower(),
+            binary_location=browser_binary_path,
         )
-        output = sophos.login(username, password)
+        output = sophos.login(username=username, password=password)
         self.log_text(output)
 
     def change_appearance_mode_event(self, new_appearance_mode: str):
